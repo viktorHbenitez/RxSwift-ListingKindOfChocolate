@@ -32,30 +32,39 @@ import RxCocoa
 
 class ShoppingCart {
   static let sharedCart = ShoppingCart()
-  var chocolates: [Chocolate] = []
+
+  /*
+   Essentially, rather than setting chocolates to a Swift array of Chocolate objects, you have now defined it as a RxSwift BehaviorRelay that has a type of a Swift array of Chocolate objects
+   */
+  var chocolates: BehaviorRelay<[Chocolate]> = BehaviorRelay(value: [])
 }
 
 //MARK: Non-Mutating Functions
 extension ShoppingCart {
   var totalCost: Float {
-    return chocolates.reduce(0) {
+    
+    // BehaviorRelay has a property called value
+    // value property: This stores your array of Chocolate objects
+    return chocolates.value.reduce(0) {
       runningTotal, chocolate in
       return runningTotal + chocolate.priceInDollars
     }
   }
   
   var itemCountString: String {
-    guard chocolates.count > 0 else {
+    guard chocolates.value.count > 0 else {
       return "🚫🍫"
     }
     
     //Unique the chocolates
-    let setOfChocolates = Set<Chocolate>(chocolates)
+    let setOfChocolates = Set<Chocolate>(chocolates.value)
     
     //Check how many of each exists
     let itemStrings: [String] = setOfChocolates.map {
       chocolate in
-      let count: Int = chocolates.reduce(0) {
+      
+      // value: This store your array of chocolate objects
+      let count: Int = chocolates.value.reduce(0) {
         runningTotal, reduceChocolate in
         if chocolate == reduceChocolate {
           return runningTotal + 1

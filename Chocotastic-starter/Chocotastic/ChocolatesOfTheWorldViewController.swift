@@ -33,6 +33,9 @@ import RxCocoa
 class ChocolatesOfTheWorldViewController: UIViewController {
   @IBOutlet private var cartButton: UIBarButtonItem!
   @IBOutlet private var tableView: UITableView!
+  
+  // you will use to clean up any Observers you set up
+  private let disposeBag = DisposeBag()
   let europeanChocolates = Chocolate.ofEurope
 }
 
@@ -44,23 +47,55 @@ extension ChocolatesOfTheWorldViewController {
     
     tableView.dataSource = self
     tableView.delegate = self
+    
+    // Set up Rx Observers
+    setupCartObserver()
   }
+  
+  
+  
   
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
-    updateCartButton()
+//    updateCartButton()
   }
 }
 
 //MARK: - Rx Setup
 private extension ChocolatesOfTheWorldViewController {
   
+  
+  /*
+   This set up a reactive Observer to update the cart automatically. As you can see, RxSwift makes heavy use of chained functions, meaning that each function takes the result of the previous function.
+   */
+  
+   func setupCartObserver() {
+     // 1
+     ShoppingCart.sharedCart.chocolates.asObservable()
+       .subscribe(onNext: { // 2
+         [unowned self] chocolates in
+        self.cartButton.title = "\(chocolates.count) \u{1f36b}"
+        
+        print("Response: ", chocolates.count)
+       })
+       .disposed(by: disposeBag) //3
+   }
+   
+  /*
+  
+   1. Grab the shopping cart’s chocolates variable as an Observable.
+   2. Call subscribe(onNext:) on that Observable to discover changes to the Observable’s value. subscribe(onNext:) accepts a closure that executes every time the value changes. The incoming parameter to the closure is the new value of your Observable. You’ll keep getting these notifications until you either unsubscribe or dispose of your subscription. What you get back from this method is an Observer conforming to Disposable.
+   3. Add the Observer from the previous step to your disposeBag. This disposes of your subscription upon deallocating the subscribing object.
+   */
+  
+  
+  
 }
 
 //MARK: - Imperative methods
 private extension ChocolatesOfTheWorldViewController {
   func updateCartButton() {
-    cartButton.title = "\(ShoppingCart.sharedCart.chocolates.count) 🍫"
+    cartButton.title = "\(ShoppingCart.sharedCart.chocolates.value.count) 🍫"
   }
 }
 
@@ -93,18 +128,15 @@ extension ChocolatesOfTheWorldViewController: UITableViewDelegate {
     tableView.deselectRow(at: indexPath, animated: true)
     
     let chocolate = europeanChocolates[indexPath.row]
-    ShoppingCart.sharedCart.chocolates.append(chocolate)
-    updateCartButton()
+//    ShoppingCart.sharedCart.chocolates.append(chocolate)
+    
+    // accept method: if you need to access or change something in that array of chocolates
+    let newValue = ShoppingCart.sharedCart.chocolates.value + [chocolate]
+    ShoppingCart.sharedCart.chocolates.accept(newValue)
+    
+//    updateCartButton()
   }
 }
-
-// MARK: - SegueHandler
-//extension ChocolatesOfTheWorldViewController: SegueHandler {
-//  enum SegueIdentifier: String {
-//    case goToCart
-//  }
-//
-//}
 
 
 extension ChocolatesOfTheWorldViewController: SegueHandler{
