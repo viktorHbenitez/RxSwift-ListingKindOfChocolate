@@ -36,7 +36,7 @@ class ChocolatesOfTheWorldViewController: UIViewController {
   
   // you will use to clean up any Observers you set up
   private let disposeBag = DisposeBag()
-  let europeanChocolates = Chocolate.ofEurope
+  let europeanChocolates = Observable.just(Chocolate.ofEurope)
 }
 
 //MARK: View Lifecycle
@@ -44,16 +44,40 @@ extension ChocolatesOfTheWorldViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     title = "Chocolate!!!"
-    
-    tableView.dataSource = self
-    tableView.delegate = self
-    
     // Set up Rx Observers
-    setupCartObserver()
+    setupCartButtonObserver()
+    setupCellConfiguration()
+    setupCellTapHandling()
   }
   
   
   
+  func setupCellConfiguration(){
+    
+    europeanChocolates.bind(to: tableView.rx.items(cellIdentifier: ChocolateCell.Identifier, cellType: ChocolateCell.self)){ row, chocolate, cell in
+      
+      cell.configureWithChocolate(chocolate: chocolate)
+    }
+    .disposed(by: disposeBag)
+    
+  }
+  
+  func setupCellTapHandling() {
+    tableView
+      .rx
+      .modelSelected(Chocolate.self) //1
+      .subscribe(onNext: { [unowned self] chocolate in // 2
+        let newValue =  ShoppingCart.sharedCart.chocolates.value + [chocolate]
+        ShoppingCart.sharedCart.chocolates.accept(newValue) //3
+          
+        if let selectedRowIndexPath = self.tableView.indexPathForSelectedRow {
+          self.tableView.deselectRow(at: selectedRowIndexPath, animated: true)
+        } //4
+      })
+      .disposed(by: disposeBag) //5
+  }
+
+
   
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
@@ -69,7 +93,7 @@ private extension ChocolatesOfTheWorldViewController {
    This set up a reactive Observer to update the cart automatically. As you can see, RxSwift makes heavy use of chained functions, meaning that each function takes the result of the previous function.
    */
   
-   func setupCartObserver() {
+   func setupCartButtonObserver() {
      // 1
      ShoppingCart.sharedCart.chocolates.asObservable()
        .subscribe(onNext: { // 2
@@ -88,8 +112,6 @@ private extension ChocolatesOfTheWorldViewController {
    3. Add the Observer from the previous step to your disposeBag. This disposes of your subscription upon deallocating the subscribing object.
    */
   
-  
-  
 }
 
 //MARK: - Imperative methods
@@ -98,46 +120,6 @@ private extension ChocolatesOfTheWorldViewController {
     cartButton.title = "\(ShoppingCart.sharedCart.chocolates.value.count) 🍫"
   }
 }
-
-// MARK: - Table view data source
-extension ChocolatesOfTheWorldViewController: UITableViewDataSource {
-  func numberOfSections(in tableView: UITableView) -> Int {
-    return 1
-  }
-  
-  func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    return europeanChocolates.count
-  }
-  
-  func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    guard let cell = tableView.dequeueReusableCell(withIdentifier: ChocolateCell.Identifier, for: indexPath) as? ChocolateCell else {
-      //Something went wrong with the identifier.
-      return UITableViewCell()
-    }
-    
-    let chocolate = europeanChocolates[indexPath.row]
-    cell.configureWithChocolate(chocolate: chocolate)
-    
-    return cell
-  }
-}
-
-// MARK: - Table view delegate
-extension ChocolatesOfTheWorldViewController: UITableViewDelegate {
-  func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-    tableView.deselectRow(at: indexPath, animated: true)
-    
-    let chocolate = europeanChocolates[indexPath.row]
-//    ShoppingCart.sharedCart.chocolates.append(chocolate)
-    
-    // accept method: if you need to access or change something in that array of chocolates
-    let newValue = ShoppingCart.sharedCart.chocolates.value + [chocolate]
-    ShoppingCart.sharedCart.chocolates.accept(newValue)
-    
-//    updateCartButton()
-  }
-}
-
 
 extension ChocolatesOfTheWorldViewController: SegueHandler{
   enum SegueIdentifier: String{

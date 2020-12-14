@@ -44,7 +44,7 @@ extension ShoppingCart {
   var totalCost: Float {
     
     // BehaviorRelay has a property called value
-    // value property: This stores your array of Chocolate objects
+    // Value property: This stores your array of Chocolate objects
     return chocolates.value.reduce(0) {
       runningTotal, chocolate in
       return runningTotal + chocolate.priceInDollars
